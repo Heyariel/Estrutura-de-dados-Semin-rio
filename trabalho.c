@@ -7,19 +7,19 @@ typedef struct Musica {
     char titulo[100];
     char artista[100];
     float duracao;
-    struct Musica *prev;
-    struct Musica *next;
+    struct Musica *anterior;
+    struct Musica *proximo;
 } Musica;
 
 typedef struct Playlist {
     char nome[100];
     Musica *inicio;
-    struct Playlist *next;
+    struct Playlist *proximo;
 } Playlist;
 
 typedef struct Fila {
     Musica *musica;
-    struct Fila *next;
+    struct Fila *proximo;
 } Fila;
 
 Playlist *playlists = NULL;
@@ -27,19 +27,21 @@ Fila *fila = NULL;
 
 Musica* criarMusica(char *titulo, char *artista, float duracao) {
     Musica *m = malloc(sizeof(Musica));
-    strcpy(m->titulo, titulo);
-    strcpy(m->artista, artista);
+    if (!m) return NULL;
+    strncpy(m->titulo, titulo, sizeof(m->titulo)-1); m->titulo[sizeof(m->titulo)-1] = '\0';
+    strncpy(m->artista, artista, sizeof(m->artista)-1); m->artista[sizeof(m->artista)-1] = '\0';
     m->duracao = duracao;
-    m->prev = m;
-    m->next = m;
+    m->anterior = m;
+    m->proximo = m;
     return m;
 }
 
 Playlist* criarplaylist(char *nome) {
     Playlist *p = malloc(sizeof(Playlist));
-    strcpy(p->nome, nome);
+    if (!p) return NULL;
+    strncpy(p->nome, nome, sizeof(p->nome)-1); p->nome[sizeof(p->nome)-1] = '\0';
     p->inicio = NULL;
-    p->next = playlists;
+    p->proximo = playlists;
     playlists = p;
     return p;
 }
@@ -48,21 +50,23 @@ Playlist* buscarplaylist(char *nome) {
     Playlist *p = playlists;
     while (p != NULL) {
         if (strcmp(p->nome, nome) == 0) return p;
-        p = p->next;
+        p = p->proximo;
     }
     return NULL;
 }
 
 void adicionarMusica(Playlist *p, char *titulo, char *artista, float duracao) {
+    if (!p) return;
     Musica *nova = criarMusica(titulo, artista, duracao);
+    if (!nova) return;
     if (p->inicio == NULL) {
         p->inicio = nova;
     } else {
-        Musica *ultimo = p->inicio->prev;
-        ultimo->next = nova;
-        nova->prev = ultimo;
-        nova->next = p->inicio;
-        p->inicio->prev = nova;
+        Musica *ultimo = p->inicio->anterior;
+        ultimo->proximo = nova;
+        nova->anterior = ultimo;
+        nova->proximo = p->inicio;
+        p->inicio->anterior = nova;
     }
 }
 
@@ -70,30 +74,32 @@ void listarPlaylists() {
     Playlist *p = playlists;
     while (p != NULL) {
         printf("- %s\n", p->nome);
-        p = p->next;
+        p = p->proximo;
     }
 }
 
 void listarMusicas(Playlist *p) {
-    if (p->inicio == NULL) return;
+    if (!p || p->inicio == NULL) return;
     Musica *m = p->inicio;
     do {
         printf("%s - %s (%.2f)\n", m->titulo, m->artista, m->duracao);
-        m = m->next;
+        m = m->proximo;
     } while (m != p->inicio);
 }
 
 void enfileirar(Musica *m) {
+    if (!m) return;
     Fila *novo = malloc(sizeof(Fila));
+    if (!novo) return;
     novo->musica = m;
-    novo->next = NULL;
+    novo->proximo = NULL;
 
     if (fila == NULL) {
         fila = novo;
     } else {
         Fila *aux = fila;
-        while (aux->next != NULL) aux = aux->next;
-        aux->next = novo;
+        while (aux->proximo != NULL) aux = aux->proximo;
+        aux->proximo = novo;
     }
 }
 
@@ -103,7 +109,7 @@ void tocarFila() {
     Fila *aux = fila;
     while (aux != NULL) {
         printf("Tocando: %s - %s\n", aux->musica->titulo, aux->musica->artista);
-        aux = aux->next;
+        aux = aux->proximo;
     }
 }
 
@@ -111,17 +117,17 @@ void musicaatual(Playlist *p){
     if(fila != NULL){
         printf("Tocando agora: %s\n", fila->musica->titulo);
         printf(" - %s\n", fila->musica->artista);
-        printf("Duraç?o: %.2f minutos\n", fila->musica->duracao);
+        printf("Duracao: %.2f minutos\n", fila->musica->duracao);
         return;
     }
 
     if(p != NULL && p->inicio != NULL){
         printf("Tocando agora (da playlist %s): %s\n", p->nome, p->inicio->titulo);
         printf(" - %s\n", p->inicio->artista);
-        printf("Duraç?o: %.2f minutos\n", p->inicio->duracao);
+        printf("Duracao: %.2f minutos\n", p->inicio->duracao);
         return;
     }
-    printf("Nenhuma música na fila ou playlist.\n");
+    printf("Nenhuma musica na fila ou playlist.\n");
 }
 
 void limparbuff(){
@@ -130,70 +136,71 @@ void limparbuff(){
 }
 
 int main() {
-    setlocale(LC_ALL, "portuguese");
+    setlocale(LC_ALL, "");
     char nome[100], titulo[100], artista[100];
     float duracao;
 
     for (;;) {
         printf("\n1 - Criar playlist\n");
         printf("2 - Listar playlists\n");
-        printf("3 - Adicionar música\n");
-        printf("4 - Listar músicas\n");
+        printf("3 - Adicionar musica\n");
+        printf("4 - Listar musicas\n");
         printf("5 - Enfileirar\n");
         printf("6 - Tocar fila\n");
-        printf("7 - Mostrar música atual\n");
+        printf("7 - Mostrar musica atual\n");
         printf("0 - Sair\n> ");
 
-        switch (getchar()) {
-            case '0':
+        int opcao;
+        if (scanf("%d", &opcao) != 1) {
+            limparbuff();
+            continue;
+        }
+        limparbuff();
+
+        switch (opcao){
+            case 0:
                 return 0;
 
-            case '1':
-                getchar();
+            case 1:
                 printf("Nome da playlist: ");
-                fgets(nome, 100, stdin);
+                if (!fgets(nome, sizeof(nome), stdin)) break;
                 nome[strcspn(nome, "\n")] = 0;
                 criarplaylist(nome);
                 break;
 
-            case '2':
-                getchar();
+            case 2:
                 listarPlaylists();
                 break;
 
-            case '3':
-                limparbuff();
-
+            case 3:
                 printf("Playlist: ");
-                fgets(nome, 100, stdin);
+                if (!fgets(nome, sizeof(nome), stdin)) break;
                 nome[strcspn(nome, "\n")] = 0;
                 {
                     Playlist *p = buscarplaylist(nome);
                     if (!p){
-                        printf("Playlist n?o encontrada.\n");
+                        printf("Playlist nao encontrada.\n");
                         break;
                     }
-                    printf("Título: ");
-                    fgets(titulo, 100, stdin);
+                    printf("Titulo: ");
+                    if (!fgets(titulo, sizeof(titulo), stdin)) break;
                     titulo[strcspn(titulo, "\n")] = 0;
 
                     printf("Artista: ");
-                    fgets(artista, 100, stdin);
+                    if (!fgets(artista, sizeof(artista), stdin)) break;
                     artista[strcspn(artista, "\n")] = 0;
 
-                    printf("Duraç?o: ");
-                    scanf("%f", &duracao);
-
+                    printf("Duracao: ");
+                    if (scanf("%f", &duracao) != 1) { limparbuff(); break; }
                     limparbuff();
 
                     adicionarMusica(p, titulo, artista, duracao);
                 }
                 break;
 
-            case '4':
-                getchar();
+            case 4:
                 printf("Playlist: ");
-                fgets(nome, 100, stdin);
+                if (!fgets(nome, sizeof(nome), stdin)) break;
                 nome[strcspn(nome, "\n")] = 0;
                 {
                     Playlist *p = buscarplaylist(nome);
@@ -201,17 +208,16 @@ int main() {
                 }
                 break;
 
-            case '5':
-                getchar();
+            case 5:
                 printf("Playlist: ");
-                fgets(nome, 100, stdin);
+                if (!fgets(nome, sizeof(nome), stdin)) break;
                 nome[strcspn(nome, "\n")] = 0;
                 {
                     Playlist *p = buscarplaylist(nome);
                     if (!p || !p->inicio) break;
 
-                    printf("Título da música: ");
-                    fgets(titulo, 100, stdin);
+                    printf("Titulo da musica: ");
+                    if (!fgets(titulo, sizeof(titulo), stdin)) break;
                     titulo[strcspn(titulo, "\n")] = 0;
 
                     Musica *m = p->inicio;
@@ -220,22 +226,20 @@ int main() {
                             enfileirar(m);
                             break;
                         }
-                        m = m->next;
+                        m = m->proximo;
                     } while (m != p->inicio);
                 }
                 break;
 
-            case '6':
-                getchar();
+            case 6:
                 tocarFila();
                 break;
 
-            case '7':
-                getchar();
+            case 7:
                 printf("Playlist (Aperte Enter para usar a fila): ");
-                fgets(nome, 100, stdin);
+                if (!fgets(nome, sizeof(nome), stdin)) break;
                 nome[strcspn(nome, "\n")] = 0;
-                
+
                 if(strlen(nome) == 0)
                     musicaatual(NULL);
                 else
@@ -243,7 +247,6 @@ int main() {
                 break;
 
             default:
-                getchar();
                 break;
         }
     }
